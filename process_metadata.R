@@ -97,3 +97,18 @@ print(length(flist))
 fdiffs <- file("diffs.txt")
 writeLines(unlist(diffs), fdiffs)
 close(fdiffs)
+
+# 
+library(gplots)
+library(ggplot2)
+library(plyr)
+library(reshape)
+library(colorRamps)
+library(RColorBrewer)
+X <- unique(meta[,14:51])
+X <- scale(X)
+heatmap.2(abs(cor(X)),symm=TRUE, Colv=TRUE,scale="none", trace="none",
+           dendrogram = "column",
+           col = colorRampPalette(brewer.pal(9,"Blues"))(100))
+
+ggplot(melt(as.data.frame(X)), aes(value)) + geom_histogram(binwidth=.5) + facet_wrap(~ variable, ncol=4)
