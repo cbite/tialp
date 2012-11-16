@@ -8,7 +8,7 @@ rm(list=ls())
 library(foreach)
 meta_fname = '../input/Metadatafile TopoChip_TiALP_array1_allunits.csv'
 meta_pruned_fname = '../input/Metadatafile TopoChip_TiALP_array1_allunits_pruned.csv'
-flist_fname = '../input/flist_witharray9.txt'
+flist_fname = '../input/flist.txt'
 pathname <- "\\\\iodine\\imaging_analysis\\2012_08_20_TopoChipScreening_deBoerLab\\rawdataTiALPscreen\\"
 fprefix <- list(FileName_Actin='alexa488', FileName_DNA='dapi', FileName_ALP='alexa594')
 pathname_header_prefix <- c("PathName_Actin", "PathName_DNA", "PathName_ALP")
@@ -89,6 +89,7 @@ for (fp in fprefix_warrayname) {
   print(flag)
 }
 
+# find the files that are present in the directories
 fc <- file(flist_fname)
 flist <- readLines(fc)
 close(fc)
@@ -96,26 +97,30 @@ flag_array <- foreach (fp = fprefix_warrayname,
                        .combine=cbind) %do% (as.character(meta2[,fp]) %in% flist)
 
 # sanity check
+# if its present in one it is present in all?
 all(apply(flag_array, 1, any) == apply(flag_array, 1, all))
+
+# save only those files that are present in all (just in case the test above fails, play it safe)
 flag_array_all <- apply(flag_array, 1, all)
 meta2_pruned <- meta2[flag_array_all,]
 write.csv(meta2_pruned, meta_pruned_fname, row.names = FALSE)
 
-
+# print stats
 print("number of files in the original metadata file")
 print(length(flag_array_all)*dim(flag_array)[2])
-print("number of  files in the pruned metadata file")
+print("number of files in the pruned metadata file")
 print(sum(flag_array_all)*dim(flag_array)[2])
 print("number of files in directories")
 print(length(flist))
+print("list of files present in directories but not in metadata")
+print(setdiff(flist, as.vector(t(meta2_pruned[,fprefix_warrayname]))))
 
-
+# do additional checks
 print("checking if files are present in one channel but not the other")
-
 flag_arrayf <- as.data.frame(flag_array)
-names(flag_arrayf) <- names(fprefix)
+names(flag_arrayf) <- fprefix_warrayname
 diffs <- list()
-for (fp in names(fprefix)) {
+for (fp in fprefix_warrayname) {
   diffs <- c(diffs, as.character(meta2[setdiff(which(flag_arrayf[,fp]), which(flag_array_all)), fp]))
 }
 
