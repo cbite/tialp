@@ -99,7 +99,7 @@ flag_array <- foreach (fp = fprefix_warrayname,
 all(apply(flag_array, 1, any) == apply(flag_array, 1, all))
 flag_array_all <- apply(flag_array, 1, all)
 meta2_pruned <- meta2[flag_array_all,]
-write.csv(meta2_pruned, meta_pruned_fname)
+write.csv(meta2_pruned, meta_pruned_fname, row.names = FALSE)
 
 
 print("number of files in the original metadata file")
