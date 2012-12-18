@@ -1,0 +1,97 @@
+#----  Load libraries
+library(ggplot2)
+library(plyr)
+library(caret)
+library(doMC)
+library(yaml)
+library(xtable)
+library(reshape2)
+library(MASS)
+library(grid)
+library(gridExtra)
+library(hash)
+library(devtools)
+library(knitr)
+library(glmnet)
+load_all("~/work/code/Rpackages/cytominr")
+
+registerDoMC()
+
+rm(list=ls())
+cf = '../input/TIALP-B1/well-mean-no_norm.yml'
+#cf = '../input/TIALP-B1/cell_counts.yml'
+B <- profile.data(cf)
+Xmorp <- feats(B)
+Xtopo <- factors(B)
+
+xc1 <- c("Image_Metadata_ArrayNumber",
+       "Image_Metadata_ChipCOL",
+       "Image_Metadata_ChipROW",
+       "Image_Metadata_NUM",
+       "Image_Metadata_Split",
+       "Image_Metadata_colidxbottom",
+       "Image_Metadata_colidxtop",
+       "Image_Metadata_featureidx",
+       "Image_Metadata_imageidxbottom",
+       "Image_Metadata_imageidxtop",
+       "Image_Metadata_internalidx",
+       "Image_Metadata_rowidxbottom",
+       "Image_Metadata_rowidxtop",
+       "Image_Metadata_unitidxbottom",
+       "Image_Metadata_unitidxtop")
+
+xc2 <- c("Image_Metadata_FCPLOGN0_1",
+         "Image_Metadata_FCPLOGN0_3",
+         "Image_Metadata_FCPN01",
+         "Image_Metadata_FCPN03")
+
+xc3 <- c("Image_Metadata_FCP",
+         "Image_Metadata_FCPLOG")
+
+xc4 <- c("Image_Metadata_FileName_DNA_w_array_name",
+         "Image_Metadata_FileName_ALP_w_array_name",
+         "Image_Metadata_FileName_Actin_w_array_name")
+
+
+# Baseline experiment - Predict FCP
+pred_var <- "Image_Metadata_FCPLOG"
+y <- Xtopo[,pred_var]
+exclude_cols <- c(xc1, xc2, xc3, xc4, pred_var)
+
+# Real experiment - Predict a morphological feature
+# pred_var <- "Cells_AreaShape_FormFactor"
+# y <- Xmorp[,pred_var]
+# exclude_cols <- c(xc1, xc2, xc4)
+
+# Create design matrix
+Xtopom <- as.matrix(Xtopo[,!(names(Xtopo) %in% exclude_cols)])
+
+# split training and testing
+n <- NROW(Xtopom)
+all_v <- sample(n)
+ntrain <- ceiling(n*.8)
+train_v <- all_v[1:ntrain]
+test_v <- all_v[(ntrain+1):n]
+
+Xtr <- Xtopom[train_v,]
+Xte <- Xtopom[test_v,]
+ytr <- y[train_v]
+yte <- y[test_v]
+
+for (alpha in c(0.001,seq(.2,1,.2))) {
+#for (alpha in c(1)) {
+  title_text <- sprintf("alpha=%.1f", alpha)
+  cv <- cv.glmnet(Xtr, ytr,family="gaussian", alpha=alpha)
+  #plot(cv, main=title_text)
+  yp <- predict(cv,Xte)
+  plot(yte, yp, main=title_text)  
+  #hist(abs(yte-yp)/abs(yte),main=title_text)
+  coef_v <- coef(cv)
+  coef_v <- coef_v[(row.names(coef_v)!="(Intercept)"),]
+  p <- qplot(names(coef_v), abs(as.vector(coef_v)), ) + coord_flip()
+  print(p)
+}
+
+
+
+

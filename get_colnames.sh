@@ -1,0 +1,1 @@
+mysql -h imgdb02 -ABN -u cpuser -pcPus3r -h imgdb02 2012_08_20_TopoChipScreening_deBoerLab  -e 'select column_name from information_schema.columns where table_name = "TiALP_Per_Image" and column_name like "Image_Metadata_%" order by ordinal_position'|tr '\n' ','
