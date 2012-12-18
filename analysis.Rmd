@@ -1,3 +1,7 @@
+HDAC Knockdown Analysis
+========================================================
+  
+  ```{r, message=FALSE,warning=FALSE}
 #----  Load libraries
 library(ggplot2)
 library(plyr)
@@ -16,7 +20,9 @@ library(glmnet)
 load_all("~/work/code/Rpackages/cytominr")
 
 registerDoMC()
+```
 
+```{r}
 rm(list=ls())
 cf = '../input/TIALP-B1/well-mean-no_norm.yml'
 #cf = '../input/TIALP-B1/cell_counts.yml'
