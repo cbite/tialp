@@ -34,7 +34,7 @@ Xtopo <- factors(B)
 names(Xtopo) <- sub('TiALP_Per_Image.Image_Metadata_', '', names(Xtopo))
 names(Xtopo) <- sub('Image_Metadata_', '', names(Xtopo))
 
-
+# Group by featureidx
 D0 <- data.frame(Xtopo, Xmorp)
 D1 <- ddply(D0, .(featureidx), summarize, 
       Cells_AreaShape_Area_mean = mean(Cells_AreaShape_Area),
@@ -85,14 +85,16 @@ xc4 <- c("FileName_DNA_w_array_name",
          "Image_FileName_ALP",
          "Image_FileName_Actin")
 
+```
 
+```{r}
 #expt <- "baseline"
 expt <- "real"
 
 if (expt == "baseline") {
   # Baseline experiment - Predict FCP
   pred_var <- "FCPLOG"
-  y <- Xtopo[,pred_var]
+  y0 <- Xtopo[,pred_var]
   exclude_cols <- c(xc1, xc2, xc3, xc4, pred_var)  
 } else {
   # Real experiment - Predict a morphological feature
@@ -101,25 +103,25 @@ if (expt == "baseline") {
   pred_var <- "Nuclei_AreaShape_FormFactor_mean"  
   #pred_var <- "Cells_AreaShape_Area"
   #pred_var <- "Image_Count_Cells"
-  y <- Xmorp[,pred_var]
+  y0 <- Xmorp[,pred_var]
   exclude_cols <- c(xc1, xc2, xc4)  
 }
 
 
 # Create design matrix
-Xtopom <- as.matrix(Xtopo[,!(names(Xtopo) %in% exclude_cols)])
+Xtopom0 <- as.matrix(Xtopo[,!(names(Xtopo) %in% exclude_cols)])
 
 ```
 
 ```{r, eval=TRUE}
-method = "rf"
-remove_extremes=T
+method = 'lm'
+remove_extremes=F
 
 if (remove_extremes) {
-  q <- quantile(y, probs = c(.01,.99))
-  filt <- (y > q[[1]]) & (y < q[[2]])  
+  q <- quantile(y0, probs = c(.01,.99))
+  filt <- (y0 > q[[1]]) & (y0 < q[[2]])  
 } else {
-  filt <- !vector(length=length(y))
+  filt <- !vector(length=length(y0))
 }
 
 #registerDoMC()
@@ -127,8 +129,12 @@ if (remove_extremes) {
 #fit_ <- train(matrix(rnorm(1000), nrow=100, ncol=10), 
 #               rnorm(100), method=method)
 
-Xtopom <-  Xtopom[filt,]
-y <- y[filt]
+Xtopom <-  Xtopom0[filt,]
+#Xtopom <-  Xtopom0[filt,names(Xtopo)[grep("WN", names(Xtopo))]]
+y <- y0[filt]
+
+#inv.logit <- function(x, alpha=0.1)  exp(x*alpha)/(1+exp(x*alpha))
+#y <- inv.logit(y - mean(y), alpha=5)
 
 n <- length(y)
 v <- sample(n)
@@ -146,7 +152,7 @@ yte <- y[te_vec]
 fit <- train(Xtr,
              ytr,
              method = method,
-         #     tuneLength = 15,
+             tuneLength = 15,
              preProc = c("center", "scale"),
              trControl = trainControl(method = "repeatedcv", 
                                       number = 5,
