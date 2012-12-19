@@ -1,7 +1,7 @@
 HDAC Knockdown Analysis
 ========================================================
-  
-  ```{r, message=FALSE,warning=FALSE}
+
+```{r, message=FALSE,warning=FALSE}
 #----  Load libraries
 library(ggplot2)
 library(plyr)
@@ -84,8 +84,10 @@ Xte <- Xtopom[test_v,]
 ytr <- y[train_v]
 yte <- y[test_v]
 
-for (alpha in c(0.001,seq(.2,1,.2))) {
-#for (alpha in c(1)) {
+alpha_l <- seq(0,1,.2)
+# ytem <- matrix(0.0, nrow=length(yte), ncol=length(alpha_l))
+# i <- 1
+for (alpha in alpha_l) {
   title_text <- sprintf("alpha=%.1f", alpha)
   cv <- cv.glmnet(Xtr, ytr,family="gaussian", alpha=alpha)
   #plot(cv, main=title_text)
@@ -96,8 +98,9 @@ for (alpha in c(0.001,seq(.2,1,.2))) {
   coef_v <- coef_v[(row.names(coef_v)!="(Intercept)"),]
   p <- qplot(names(coef_v), abs(as.vector(coef_v)), ) + coord_flip()
   print(p)
+#   ytem[,i] <- yp
+#   i <- i + 1
 }
-
-
+```
 
 
