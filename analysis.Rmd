@@ -34,7 +34,25 @@ Xtopo <- factors(B)
 names(Xtopo) <- sub('TiALP_Per_Image.Image_Metadata_', '', names(Xtopo))
 names(Xtopo) <- sub('Image_Metadata_', '', names(Xtopo))
 
+
+D0 <- data.frame(Xtopo, Xmorp)
+D1 <- ddply(D0, .(featureidx), summarize, 
+      Cells_AreaShape_Area_mean = mean(Cells_AreaShape_Area),
+      Cells_AreaShape_FormFactor_mean = mean(Cells_AreaShape_FormFactor),
+      Image_Count_Cells_mean  = mean(Image_Count_Cells)
+      )
+D2 <- join(D1, D0, type="left", match="first")
+topo_names <- names(Xtopo)
+morp_names <- c(names(Xmorp), 
+                "Cells_AreaShape_Area_mean", 
+                "Cells_AreaShape_FormFactor_mean", 
+                "Image_Count_Cells_mean")
+Xtopo <- D2[,topo_names]
+Xmorp <- D2[,morp_names]
+
+  
 xc1 <- c("ArrayNumber",
+         "featureidx",
        "ChipCOL",
        "ChipROW",
        "NUM",
@@ -76,7 +94,8 @@ if (expt == "baseline") {
   exclude_cols <- c(xc1, xc2, xc3, xc4, pred_var)  
 } else {
   # Real experiment - Predict a morphological feature
-  pred_var <- "Cells_AreaShape_FormFactor"
+  #pred_var <- "Cells_AreaShape_FormFactor"
+  pred_var <- "Cells_AreaShape_FormFactor_mean"  
   #pred_var <- "Cells_AreaShape_Area"
   #pred_var <- "Image_Count_Cells"
   y <- Xmorp[,pred_var]
@@ -90,11 +109,11 @@ Xtopom <- as.matrix(Xtopo[,!(names(Xtopo) %in% exclude_cols)])
 ```
 
 ```{r, eval=TRUE}
-method = "rlm"
+method = "lm"
 remove_extremes=T
 
 if (remove_extremes) {
-  q <- quantile(y, probs = c(.1,.90))
+  q <- quantile(y, probs = c(.01,.99))
   filt <- (y > q[[1]]) & (y < q[[2]])  
 } else {
   filt <- !vector(length=length(y))
