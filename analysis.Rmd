@@ -66,8 +66,8 @@ xc4 <- c("FileName_DNA_w_array_name",
          "Image_FileName_Actin")
 
 
-expt <- "baseline"
-#expt <- "real"
+#expt <- "baseline"
+expt <- "real"
 
 if (expt == "baseline") {
   # Baseline experiment - Predict FCP
