@@ -60,14 +60,14 @@ xc4 <- c("Image_Metadata_FileName_DNA_w_array_name",
 
 
 # Baseline experiment - Predict FCP
-pred_var <- "Image_Metadata_FCPLOG"
-y <- Xtopo[,pred_var]
-exclude_cols <- c(xc1, xc2, xc3, xc4, pred_var)
+# pred_var <- "Image_Metadata_FCPLOG"
+# y <- Xtopo[,pred_var]
+# exclude_cols <- c(xc1, xc2, xc3, xc4, pred_var)
 
 # Real experiment - Predict a morphological feature
-# pred_var <- "Cells_AreaShape_FormFactor"
-# y <- Xmorp[,pred_var]
-# exclude_cols <- c(xc1, xc2, xc4)
+pred_var <- "Cells_AreaShape_FormFactor"
+y <- Xmorp[,pred_var]
+exclude_cols <- c(xc1, xc2, xc4)
 
 # Create design matrix
 Xtopom <- as.matrix(Xtopo[,!(names(Xtopo) %in% exclude_cols)])
