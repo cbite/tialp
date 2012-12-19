@@ -25,9 +25,9 @@ registerDoMC()
 
 ```{r}
 rm(list=ls())
-cf = '../input/TIALP-B1/well-summary-profile_mean-median-none-none.yml'
+#cf = '../input/TIALP-B1/well-summary-profile_mean-median-none-none.yml'
 #cf = '../input/TIALP-B1/cell_counts.yml'
-#cf = '../input/TIALP-B1/feats_from_db.yml'
+cf = '../input/TIALP-B1/feats_from_db.yml'
 B <- profile.data(cf)
 Xmorp <- feats(B)
 Xtopo <- factors(B)
@@ -66,8 +66,8 @@ xc4 <- c("FileName_DNA_w_array_name",
          "Image_FileName_Actin")
 
 
-#expt <- "baseline"
-expt <- "real"
+expt <- "baseline"
+#expt <- "real"
 
 if (expt == "baseline") {
   # Baseline experiment - Predict FCP
@@ -76,7 +76,8 @@ if (expt == "baseline") {
   exclude_cols <- c(xc1, xc2, xc3, xc4, pred_var)  
 } else {
   # Real experiment - Predict a morphological feature
-  pred_var <- "Cells_AreaShape_Area"
+  pred_var <- "Cells_AreaShape_FormFactor"
+  #pred_var <- "Cells_AreaShape_Area"
   #pred_var <- "Image_Count_Cells"
   y <- Xmorp[,pred_var]
   exclude_cols <- c(xc1, xc2, xc4)  
@@ -88,7 +89,7 @@ Xtopom <- as.matrix(Xtopo[,!(names(Xtopo) %in% exclude_cols)])
 
 ```
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 method = "rlm"
 remove_extremes=T
 
@@ -119,7 +120,7 @@ plot(y[filt], predict(fit, Xtopom[filt,]))
 
 ```
 
-```{r, eval=TRUE}
+```{r, eval=FALSE}
 Xtos <- Xtopo[,"FCP"]
 q <- quantile(Xtos, c(0.01,0.99))
 fcp_class <- (Xtos<q[1])*1 + (Xtos>q[2])*2
