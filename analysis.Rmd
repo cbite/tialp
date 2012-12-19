@@ -1,4 +1,4 @@
-HDAC Knockdown Analysis
+Topo Analysis
 ========================================================
 
 ```{r, message=FALSE,warning=FALSE}
@@ -20,87 +20,124 @@ library(glmnet)
 load_all("~/work/code/Rpackages/cytominr")
 
 registerDoMC()
+#registerDoSEQ()
 ```
 
 ```{r}
 rm(list=ls())
-cf = '../input/TIALP-B1/well-mean-no_norm.yml'
+cf = '../input/TIALP-B1/well-summary-profile_mean-median-none-none.yml'
 #cf = '../input/TIALP-B1/cell_counts.yml'
+#cf = '../input/TIALP-B1/feats_from_db.yml'
 B <- profile.data(cf)
 Xmorp <- feats(B)
 Xtopo <- factors(B)
+names(Xtopo) <- sub('TiALP_Per_Image.Image_Metadata_', '', names(Xtopo))
+names(Xtopo) <- sub('Image_Metadata_', '', names(Xtopo))
 
-xc1 <- c("Image_Metadata_ArrayNumber",
-       "Image_Metadata_ChipCOL",
-       "Image_Metadata_ChipROW",
-       "Image_Metadata_NUM",
-       "Image_Metadata_Split",
-       "Image_Metadata_colidxbottom",
-       "Image_Metadata_colidxtop",
-       "Image_Metadata_featureidx",
-       "Image_Metadata_imageidxbottom",
-       "Image_Metadata_imageidxtop",
-       "Image_Metadata_internalidx",
-       "Image_Metadata_rowidxbottom",
-       "Image_Metadata_rowidxtop",
-       "Image_Metadata_unitidxbottom",
-       "Image_Metadata_unitidxtop")
+xc1 <- c("ArrayNumber",
+       "ChipCOL",
+       "ChipROW",
+       "NUM",
+       "Split",
+       "colidxbottom",
+       "colidxtop",
+       "featureidx",
+       "imageidxbottom",
+       "imageidxtop",
+       "internalidx",
+       "rowidxbottom",
+       "rowidxtop",
+       "unitidxbottom",
+       "unitidxtop")
 
-xc2 <- c("Image_Metadata_FCPLOGN0_1",
-         "Image_Metadata_FCPLOGN0_3",
-         "Image_Metadata_FCPN01",
-         "Image_Metadata_FCPN03")
+xc2 <- c("FCPLOGN0_1",
+         "FCPLOGN0_3",
+         "FCPN01",
+         "FCPN03")
 
-xc3 <- c("Image_Metadata_FCP",
-         "Image_Metadata_FCPLOG")
+xc3 <- c("FCP",
+         "FCPLOG")
 
-xc4 <- c("Image_Metadata_FileName_DNA_w_array_name",
-         "Image_Metadata_FileName_ALP_w_array_name",
-         "Image_Metadata_FileName_Actin_w_array_name")
+xc4 <- c("FileName_DNA_w_array_name",
+         "FileName_ALP_w_array_name",
+         "FileName_Actin_w_array_name",
+         "Image_FileName_DNA",
+         "Image_FileName_ALP",
+         "Image_FileName_Actin")
 
 
-# Baseline experiment - Predict FCP
-# pred_var <- "Image_Metadata_FCPLOG"
-# y <- Xtopo[,pred_var]
-# exclude_cols <- c(xc1, xc2, xc3, xc4, pred_var)
+#expt <- "baseline"
+expt <- "real"
 
-# Real experiment - Predict a morphological feature
-pred_var <- "Cells_AreaShape_FormFactor"
-y <- Xmorp[,pred_var]
-exclude_cols <- c(xc1, xc2, xc4)
+if (expt == "baseline") {
+  # Baseline experiment - Predict FCP
+  pred_var <- "FCPLOG"
+  y <- Xtopo[,pred_var]
+  exclude_cols <- c(xc1, xc2, xc3, xc4, pred_var)  
+} else {
+  # Real experiment - Predict a morphological feature
+  pred_var <- "Cells_AreaShape_Area"
+  #pred_var <- "Image_Count_Cells"
+  y <- Xmorp[,pred_var]
+  exclude_cols <- c(xc1, xc2, xc4)  
+}
+
 
 # Create design matrix
 Xtopom <- as.matrix(Xtopo[,!(names(Xtopo) %in% exclude_cols)])
 
-# split training and testing
-n <- NROW(Xtopom)
-all_v <- sample(n)
-ntrain <- ceiling(n*.8)
-train_v <- all_v[1:ntrain]
-test_v <- all_v[(ntrain+1):n]
-
-Xtr <- Xtopom[train_v,]
-Xte <- Xtopom[test_v,]
-ytr <- y[train_v]
-yte <- y[test_v]
-
-alpha_l <- seq(0,1,.2)
-# ytem <- matrix(0.0, nrow=length(yte), ncol=length(alpha_l))
-# i <- 1
-for (alpha in alpha_l) {
-  title_text <- sprintf("alpha=%.1f", alpha)
-  cv <- cv.glmnet(Xtr, ytr,family="gaussian", alpha=alpha)
-  #plot(cv, main=title_text)
-  yp <- predict(cv,Xte)
-  plot(yte, yp, main=title_text)  
-  #hist(abs(yte-yp)/abs(yte),main=title_text)
-  coef_v <- coef(cv)
-  coef_v <- coef_v[(row.names(coef_v)!="(Intercept)"),]
-  p <- qplot(names(coef_v), abs(as.vector(coef_v)), ) + coord_flip()
-  print(p)
-#   ytem[,i] <- yp
-#   i <- i + 1
-}
 ```
 
+```{r, eval=FALSE}
+method = "rlm"
+remove_extremes=T
 
+if (remove_extremes) {
+  q <- quantile(y, probs = c(.1,.90))
+  filt <- (y > q[[1]]) & (y < q[[2]])  
+} else {
+  filt <- !vector(length=length(y))
+}
+
+#registerDoMC()
+#registerDoSEQ()
+# fit_ <- train(matrix(rnorm(1000), nrow=100, ncol=10), 
+#               rnorm(1000), method=method)
+
+fit <- train(Xtopom[filt,],
+                y[filt],
+                method = method,
+                tuneLength = 15,
+                preProc = c("center", "scale"),
+                trControl = trainControl(method = "repeatedcv", 
+                                         number = 5,
+                                         repeats = 1))
+
+
+plot(y[filt], predict(fit, Xtopom[filt,]))
+
+
+```
+
+```{r, eval=TRUE}
+Xtos <- Xtopo[,"FCP"]
+q <- quantile(Xtos, c(0.01,0.99))
+fcp_class <- (Xtos<q[1])*1 + (Xtos>q[2])*2
+filt <- (Xtos<q[1]) |  (Xtos>q[2])
+
+X <- as.matrix(Xmorp[filt,])
+X <- X[,-nearZeroVar(X)]
+y <- as.factor(fcp_class[filt])
+
+fit <- train(X,y,
+             method = 'svmLinear',
+             tuneLength = 5,
+             preProc = c("center", "scale"),
+             trControl = trainControl(method = "repeatedcv", 
+                                      number = 5,
+                                      repeats = 1))
+fit
+
+
+
+```
