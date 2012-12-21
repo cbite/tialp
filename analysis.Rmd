@@ -34,13 +34,20 @@ Xtopo <- factors(B)
 names(Xtopo) <- sub('TiALP_Per_Image.Image_Metadata_', '', names(Xtopo))
 names(Xtopo) <- sub('Image_Metadata_', '', names(Xtopo))
 
+meta_csv <- read.csv('../input/Metadatafile TopoChip_TiALP_array1_allunits_pruned_fixedmetaproblem.csv')
+fname_f <- data.frame(FileName_ALP=Xtopo$Image_FileName_ALP, Metadata_ArrayNumber=Xtopo$ArrayNumber)
+meta_csv_joined <- join(fname_f, meta_csv, type="left")
+names(meta_csv_joined) <- sub('Metadata_', '', names(meta_csv_joined))
+Xtopo <- meta_csv_joined
+
 # Group by featureidx
 D0 <- data.frame(Xtopo, Xmorp)
 D1 <- ddply(D0, .(featureidx), summarize, 
       Cells_AreaShape_Area_mean = mean(Cells_AreaShape_Area),
       Cells_AreaShape_FormFactor_mean = mean(Cells_AreaShape_FormFactor),
       Nuclei_AreaShape_FormFactor_mean = mean(Nuclei_AreaShape_FormFactor),
-      Image_Count_Cells_mean  = mean(Image_Count_Cells)
+      Image_Count_Cells_mean  = mean(Image_Count_Cells),
+      Nuclei_AreaShape_FormFactor_median = median(Nuclei_AreaShape_FormFactor)
       )
 D2 <- join(D1, D0, type="left", match="first")
 topo_names <- names(Xtopo)
@@ -48,6 +55,7 @@ morp_names <- c(names(Xmorp),
                 "Cells_AreaShape_Area_mean", 
                 "Cells_AreaShape_FormFactor_mean", 
                 "Nuclei_AreaShape_FormFactor_mean", 
+                "Nuclei_AreaShape_FormFactor_median", 
                 "Image_Count_Cells_mean")
 Xtopo <- D2[,topo_names]
 Xmorp <- D2[,morp_names]
@@ -83,7 +91,14 @@ xc4 <- c("FileName_DNA_w_array_name",
          "FileName_Actin_w_array_name",
          "Image_FileName_DNA",
          "Image_FileName_ALP",
-         "Image_FileName_Actin")
+         "Image_FileName_Actin",
+         "PathName_Actin",
+         "PathName_DNA",
+         "PathName_ALP",
+         "FileName_Actin",
+         "FileName_DNA",
+         "FileName_ALP"
+         )
 
 ```
 
@@ -100,7 +115,7 @@ if (expt == "baseline") {
   # Real experiment - Predict a morphological feature
   #pred_var <- "Cells_AreaShape_FormFactor"
   #pred_var <- "Cells_AreaShape_FormFactor_mean"  
-  pred_var <- "Nuclei_AreaShape_FormFactor_mean"  
+  pred_var <- "Nuclei_AreaShape_FormFactor_median"  
   #pred_var <- "Cells_AreaShape_Area"
   #pred_var <- "Image_Count_Cells"
   y0 <- Xmorp[,pred_var]

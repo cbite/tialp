@@ -7,15 +7,18 @@
 rm(list=ls())
 library(foreach)
 meta_fname = '../input/Metadatafile TopoChip_TiALP_array1_allunits.csv'
-meta_pruned_fname = '../input/Metadatafile TopoChip_TiALP_array1_allunits_pruned.csv'
+#meta_pruned_fname = '../input/Metadatafile TopoChip_TiALP_array1_allunits_pruned.csv'
+meta_pruned_fname = '../input/Metadatafile TopoChip_TiALP_array1_allunits_pruned_fixedmetaproblem.csv'
 flist_fname = '../input/flist.txt'
 pathname <- "\\\\iodine\\imaging_analysis\\2012_08_20_TopoChipScreening_deBoerLab\\rawdataTiALPscreen\\"
 fprefix <- list(FileName_Actin='alexa488', FileName_DNA='dapi', FileName_ALP='alexa594')
 pathname_header_prefix <- c("PathName_Actin", "PathName_DNA", "PathName_ALP")
 ndigits <- 10
 extn = 'png'
-fname_idx1 <- 'Metadata_imageidxtop'
-fname_idx2 <- 'Metadata_imageidxbottom'
+# fname_idx1 <- 'Metadata_imageidxtop'
+# fname_idx2 <- 'Metadata_imageidxbottom'
+fname_idx1 <- 'Metadata_unitidxtop'
+fname_idx2 <- 'Metadata_unitidxbottom'
 exclude_pattern <- c('Pathname', 'FileName', 'Metadata_ArrayNumber')
 array_list <- c(1,2,3,4,5,7,9,10)
 
