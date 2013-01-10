@@ -25,183 +25,74 @@ registerDoMC()
 
 ```{r}
 rm(list=ls())
-#cf = '../input/TIALP-B1/well-summary-profile_mean-median-none-none.yml'
-#cf = '../input/TIALP-B1/cell_counts.yml'
-cf = '../input/TIALP-B1/feats_from_db.yml'
+cf = '../input/TIALP-B1/well-summary-profile_mean-median-none-none.yml'
 B <- profile.data(cf)
 Xmorp <- feats(B)
 Xtopo <- factors(B)
 names(Xtopo) <- sub('TiALP_Per_Image.Image_Metadata_', '', names(Xtopo))
 names(Xtopo) <- sub('Image_Metadata_', '', names(Xtopo))
 
+# Fix meta data issue # HACK!!
 meta_csv <- read.csv('../input/Metadatafile TopoChip_TiALP_array1_allunits_pruned_fixedmetaproblem.csv')
-fname_f <- data.frame(FileName_ALP=Xtopo$Image_FileName_ALP, Metadata_ArrayNumber=Xtopo$ArrayNumber)
+fname_f <- data.frame(FileName_Actin_w_array_name = Xtopo$FileName_Actin_w_array_name)
 meta_csv_joined <- join(fname_f, meta_csv, type="left")
 names(meta_csv_joined) <- sub('Metadata_', '', names(meta_csv_joined))
 Xtopo <- meta_csv_joined
 
-# Group by featureidx
-D0 <- data.frame(Xtopo, Xmorp)
-D1 <- ddply(D0, .(featureidx), summarize, 
-      Cells_AreaShape_Area_mean = mean(Cells_AreaShape_Area),
-      Cells_AreaShape_FormFactor_mean = mean(Cells_AreaShape_FormFactor),
-      Nuclei_AreaShape_FormFactor_mean = mean(Nuclei_AreaShape_FormFactor),
-      Image_Count_Cells_mean  = mean(Image_Count_Cells),
-      Nuclei_AreaShape_FormFactor_median = median(Nuclei_AreaShape_FormFactor),
-      ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr_median = median(ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr)
-      )
-D2 <- join(D1, D0, type="left", match="first")
-topo_names <- names(Xtopo)
-morp_names <- c(names(Xmorp), 
-                "Cells_AreaShape_Area_mean", 
-                "Cells_AreaShape_FormFactor_mean", 
-                "Nuclei_AreaShape_FormFactor_mean", 
-                "Nuclei_AreaShape_FormFactor_median", 
-                "Image_Count_Cells_mean",
-                "ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr_median")
-Xtopo <- D2[,topo_names]
-Xmorp <- D2[,morp_names]
+rm(list=c("meta_csv_joined", "meta_csv"))
+```
 
-  
-xc1 <- c("ArrayNumber",
-         "featureidx",
-       "ChipCOL",
-       "ChipROW",
-       "NUM",
-       "Split",
-       "colidxbottom",
-       "colidxtop",
-       "featureidx",
-       "imageidxbottom",
-       "imageidxtop",
-       "internalidx",
-       "rowidxbottom",
-       "rowidxtop",
-       "unitidxbottom",
-       "unitidxtop")
-
-xc2 <- c("FCPLOGN0_1",
-         "FCPLOGN0_3",
-         "FCPN01",
-         "FCPN03")
-
-xc3 <- c("FCP",
-         "FCPLOG")
-
-xc4 <- c("FileName_DNA_w_array_name",
-         "FileName_ALP_w_array_name",
-         "FileName_Actin_w_array_name",
-         "Image_FileName_DNA",
-         "Image_FileName_ALP",
-         "Image_FileName_Actin",
-         "PathName_Actin",
-         "PathName_DNA",
-         "PathName_ALP",
-         "FileName_Actin",
-         "FileName_DNA",
-         "FileName_ALP"
-         )
+```{r Aggregate_across_replicates}
+Xmorp0 <- Xmorp
+Xmorp0$featureidx <- Xtopo$featureidx
+Xmorp0 <- ddply(Xmorp0, .(featureidx), numcolwise(median))
+Xmorp0 <- Xmorp0[,!(names(Xmorp0) %in% c('featureidx'))]
+Xmorp0 <- Xmorp0[,-nearZeroVar(Xmorp0)]
+Xmorp0 <- Xmorp0[,-findCorrelation(cor(Xmorp0))]
 
 ```
 
-```{r}
-#expt <- "baseline"
-expt <- "real"
-
-if (expt == "baseline") {
-  # Baseline experiment - Predict FCP
-  pred_var <- "FCPLOG"
-  y0 <- Xtopo[,pred_var]
-  exclude_cols <- c(xc1, xc2, xc3, xc4, pred_var)  
-} else {
-  # Real experiment - Predict a morphological feature
-  #pred_var <- "Cells_AreaShape_FormFactor"
-  #pred_var <- "Cells_AreaShape_FormFactor_mean"  
-  pred_var <- "Nuclei_AreaShape_FormFactor_median"  
-  #pred_var <- "Cells_AreaShape_Area"
-  #pred_var <- "Image_Count_Cells"
-  y0 <- Xmorp[,pred_var]
-  exclude_cols <- c(xc1, xc2, xc4)  
-}
-
-
-# Create design matrix
-Xtopom0 <- as.matrix(Xtopo[,!(names(Xtopo) %in% exclude_cols)])
+```{r prepare_data}
+pred_var <- c("ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr")
+exclude_cols <- c(names(Xmorp0)[grep('ALP', names(Xmorp0))], pred_var)
+y <- Xmorp0[, pred_var]
+Xmorp0m <- as.matrix(Xmorp0[, !(names(Xmorp0) %in% exclude_cols)])
 
 ```
 
-```{r, eval=TRUE}
-method = 'lm'
-remove_extremes=F
-
-if (remove_extremes) {
-  q <- quantile(y0, probs = c(.01,.99))
-  filt <- (y0 > q[[1]]) & (y0 < q[[2]])  
-} else {
-  filt <- !vector(length=length(y0))
-}
-
-#registerDoMC()
-#registerDoSEQ()
-#fit_ <- train(matrix(rnorm(1000), nrow=100, ncol=10), 
-#               rnorm(100), method=method)
-
-Xtopom <-  Xtopom0[filt,]
-#Xtopom <-  Xtopom0[filt,names(Xtopo)[grep("WN", names(Xtopo))]]
-y <- y0[filt]
-
-#inv.logit <- function(x, alpha=0.1)  exp(x*alpha)/(1+exp(x*alpha))
-#y <- inv.logit(y - mean(y), alpha=5)
-
+```{r predict_ALP}
+method = "rlm"
 n <- length(y)
 v <- sample(n)
 pctr <- 0.5
-ntr <- ceiling(pctr*n)
+ntr <- ceiling(pctr * n)
 tr_vec <- v[1:ntr]
-te_vec <- v[(1+ntr):n]
+te_vec <- v[(1 + ntr):n]
 
-Xtr <- Xtopom[tr_vec,]
+Xtr <- Xmorp0m[tr_vec, ]
 ytr <- y[tr_vec]
-Xte <- Xtopom[te_vec,]
+Xte <- Xmorp0m[te_vec, ]
 yte <- y[te_vec]
 
 
-fit <- train(Xtr,
-             ytr,
-             method = method,
-             tuneLength = 15,
-             preProc = c("center", "scale"),
-             trControl = trainControl(method = "repeatedcv", 
-                                      number = 5,
-                                      repeats = 1))
+#registerDoMC() 
+#registerDoSEQ() 
+#fit_ <- train(matrix(rnorm(1000), nrow=100, ncol=10), rnorm(100), method=method)
+fit <- train(Xtr, ytr, method = method, tuneLength = 15, 
+             preProc = c("center", "scale"), 
+             trControl = trainControl(method = "repeatedcv", number = 5, repeats = 1))
 
 
 y_out <- predict(fit, Xte)
 plot(yte, y_out)
 cor(yte, y_out)
 
+coefs <- abs(fit$finalModel$coefficients)
+coefs <- sort(coefs[!(names(coefs) %in% c("(Intercept)"))], decreasing=T)
+coefs <- coefs[1:21]
+coefs_lab <- factor(1:length(coefs), labels=names(coefs))
+qplot(coefs_lab,coefs, geom='bar', stat='identity') + coord_flip() + xlab('Features') + ylab('Regression Coef')
 
 ```
 
-```{r, eval=FALSE}
-Xtos <- Xtopo[,"FCP"]
-q <- quantile(Xtos, c(0.01,0.99))
-fcp_class <- (Xtos<q[1])*1 + (Xtos>q[2])*2
-filt <- (Xtos<q[1]) |  (Xtos>q[2])
 
-X <- as.matrix(Xmorp[filt,])
-X <- X[,-nearZeroVar(X)]
-y <- as.factor(fcp_class[filt])
-
-fit <- train(X,y,
-             method = 'svmLinear',
-             tuneLength = 5,
-             preProc = c("center", "scale"),
-             trControl = trainControl(method = "repeatedcv", 
-                                      number = 5,
-                                      repeats = 1))
-fit
-
-
-
-```
