@@ -54,7 +54,9 @@ Xmorp0 <- Xmorp0[,-findCorrelation(cor(Xmorp0))]
 
 ```{r prepare_data}
 pred_var <- c("ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr")
-exclude_cols <- c(names(Xmorp0)[grep('ALP', names(Xmorp0))], pred_var)
+exclude_cols <- unique(c(names(Xmorp0)[grep('ALP', names(Xmorp0))],
+                         names(Xmorp0)[grep('Intensity', names(Xmorp0))],
+                         pred_var))
 y <- Xmorp0[, pred_var]
 Xmorp0m <- as.matrix(Xmorp0[, !(names(Xmorp0) %in% exclude_cols)])
 
