@@ -47,7 +47,8 @@ D1 <- ddply(D0, .(featureidx), summarize,
       Cells_AreaShape_FormFactor_mean = mean(Cells_AreaShape_FormFactor),
       Nuclei_AreaShape_FormFactor_mean = mean(Nuclei_AreaShape_FormFactor),
       Image_Count_Cells_mean  = mean(Image_Count_Cells),
-      Nuclei_AreaShape_FormFactor_median = median(Nuclei_AreaShape_FormFactor)
+      Nuclei_AreaShape_FormFactor_median = median(Nuclei_AreaShape_FormFactor),
+      ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr_median = median(ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr)
       )
 D2 <- join(D1, D0, type="left", match="first")
 topo_names <- names(Xtopo)
@@ -56,7 +57,8 @@ morp_names <- c(names(Xmorp),
                 "Cells_AreaShape_FormFactor_mean", 
                 "Nuclei_AreaShape_FormFactor_mean", 
                 "Nuclei_AreaShape_FormFactor_median", 
-                "Image_Count_Cells_mean")
+                "Image_Count_Cells_mean",
+                "ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr_median")
 Xtopo <- D2[,topo_names]
 Xmorp <- D2[,morp_names]
 
