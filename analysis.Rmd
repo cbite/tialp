@@ -55,15 +55,33 @@ Xmorp0 <- Xmorp0[,-findCorrelation(cor(Xmorp0))]
 ```{r prepare_data}
 pred_var <- c("ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr")
 exclude_cols <- unique(c(names(Xmorp0)[grep('ALP', names(Xmorp0))],
-                         names(Xmorp0)[grep('Intensity', names(Xmorp0))],
+                         #names(Xmorp0)[grep('Intensity', names(Xmorp0))],
                          pred_var))
 y <- Xmorp0[, pred_var]
 Xmorp0m <- as.matrix(Xmorp0[, !(names(Xmorp0) %in% exclude_cols)])
 
 ```
 
-```{r predict_ALP}
-method = "rlm"
+```{r test_lm}
+Xms <- scale(Xmorp0m)
+m <- lm(y ~ Xms)
+coefs <- summary(m)$coefficients
+coefs <- coefs[2:NROW(coefs),]
+print(xtable(coefs[coefs[,4] < 0.0005,]), file="top_feats_lm.tex", size="tiny")
+
+
+C1 <- data.frame(t=coefs[,3])
+row.names(C1) <- gsub('Xms', '', row.names(coefs))
+C2 <- cor(Xms, y)
+C3 <- merge(C1, C2, by=0, all=TRUE)
+qplot(t, V1, data=C3) + ylab('Correlation Coef.') + xlab('t-value in regression')
+ggsave('regression_correlation.pdf')
+```
+
+```{r predict_ALP, eval=FALSE}
+method = "lm"
+#method = "pls"
+#method = "lm"
 n <- length(y)
 v <- sample(n)
 pctr <- 0.5
@@ -77,7 +95,7 @@ Xte <- Xmorp0m[te_vec, ]
 yte <- y[te_vec]
 
 
-#registerDoMC() 
+registerDoMC() 
 #registerDoSEQ() 
 #fit_ <- train(matrix(rnorm(1000), nrow=100, ncol=10), rnorm(100), method=method)
 fit <- train(Xtr, ytr, method = method, tuneLength = 15, 
