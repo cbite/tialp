@@ -47,12 +47,18 @@ Xmorp0 <- Xmorp
 Xmorp0$featureidx <- Xtopo$featureidx
 Xmorp0 <- ddply(Xmorp0, .(featureidx), numcolwise(median))
 Xmorp0 <- Xmorp0[,!(names(Xmorp0) %in% c('featureidx'))]
+saveRDS(Xmorp0, file='../input/Xmorp0.rda')
+```
+
+```{r cleanup_X}
+Xmorp0 <- readRDS('../input/Xmorp0.rda')
+
 Xmorp0 <- Xmorp0[,-nearZeroVar(Xmorp0)]
 Xmorp0 <- Xmorp0[,-findCorrelation(cor(Xmorp0))]
 
 ```
 
-```{r prepare_data}
+```{r prepare_data, eval=FALSE}
 pred_var <- c("ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr")
 exclude_cols <- unique(c(names(Xmorp0)[grep('ALP', names(Xmorp0))],
                          #names(Xmorp0)[grep('Intensity', names(Xmorp0))],
@@ -62,7 +68,7 @@ Xmorp0m <- as.matrix(Xmorp0[, !(names(Xmorp0) %in% exclude_cols)])
 
 ```
 
-```{r test_lm}
+```{r test_lm, eval=FALSE}
 Xms <- scale(Xmorp0m)
 m <- lm(y ~ Xms)
 coefs <- summary(m)$coefficients
