@@ -78,9 +78,9 @@ print(xtable(coefs[coefs[,4] < 0.0005,]), file="top_feats_lm.tex", size="tiny")
 
 C1 <- data.frame(t=coefs[,3])
 row.names(C1) <- gsub('Xms', '', row.names(coefs))
-C2 <- cor(Xms, y)
+C2 <- abs(cor(Xms, y))
 C3 <- merge(C1, C2, by=0, all=TRUE)
-qplot(t, V1, data=C3) + ylab('Correlation Coef.') + xlab('t-value in regression')
+qplot(t, V1, data=C3) + ylab('Abs Correlation Coef.') + xlab('t-value in regression')
 ggsave('regression_correlation.pdf')
  
 C4 <- abs(C2)
