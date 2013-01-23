@@ -23,7 +23,7 @@ registerDoMC()
 #registerDoSEQ()
 ```
 
-```{r}
+```{r, eval=FALSE}
 rm(list=ls())
 cf = '../input/TIALP-B1/well-summary-profile_mean-median-none-none.yml'
 B <- profile.data(cf)
@@ -42,7 +42,7 @@ Xtopo <- meta_csv_joined
 rm(list=c("meta_csv_joined", "meta_csv"))
 ```
 
-```{r Aggregate_across_replicates}
+```{r Aggregate_across_replicates, eval=FALSE}
 Xmorp0 <- Xmorp
 Xmorp0$featureidx <- Xtopo$featureidx
 Xmorp0 <- ddply(Xmorp0, .(featureidx), numcolwise(median))
@@ -51,14 +51,14 @@ saveRDS(Xmorp0, file='../input/Xmorp0.rda')
 ```
 
 ```{r cleanup_X}
-Xmorp0 <- readRDS('../input/Xmorp0.rda')
+Xmorp0 <- readRDS('../results/alp_prediction/018ce9ee/Xmorp0.rda')
 
 Xmorp0 <- Xmorp0[,-nearZeroVar(Xmorp0)]
 Xmorp0 <- Xmorp0[,-findCorrelation(cor(Xmorp0))]
 
 ```
 
-```{r prepare_data, eval=FALSE}
+```{r prepare_data, eval=TRUE}
 pred_var <- c("ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr")
 exclude_cols <- unique(c(names(Xmorp0)[grep('ALP', names(Xmorp0))],
                          #names(Xmorp0)[grep('Intensity', names(Xmorp0))],
@@ -68,14 +68,13 @@ Xmorp0m <- as.matrix(Xmorp0[, !(names(Xmorp0) %in% exclude_cols)])
 
 ```
 
-```{r test_lm, eval=FALSE}
+```{r test_lm, eval=TRUE}
+
 Xms <- scale(Xmorp0m)
 m <- lm(y ~ Xms)
 coefs <- summary(m)$coefficients
 coefs <- coefs[2:NROW(coefs),]
 print(xtable(coefs[coefs[,4] < 0.0005,]), file="top_feats_lm.tex", size="tiny")
-
-
 
 C1 <- data.frame(t=coefs[,3])
 row.names(C1) <- gsub('Xms', '', row.names(coefs))
@@ -83,11 +82,12 @@ C2 <- cor(Xms, y)
 C3 <- merge(C1, C2, by=0, all=TRUE)
 qplot(t, V1, data=C3) + ylab('Correlation Coef.') + xlab('t-value in regression')
 ggsave('regression_correlation.pdf')
-
+ 
 C4 <- abs(C2)
 C4 <- as.data.frame(C4[order(C4,decreasing=T),])
 names(C4) <- c("Correlation")
-print(xtable(C4[1:10,]), file="top_feats_corr.tex", size="tiny")
+head(C4)
+print(xtable(subset(C4, Correlation > .35)), file="top_feats_corr.tex", size="tiny")
 
 ```
 
