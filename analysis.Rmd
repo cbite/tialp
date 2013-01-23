@@ -17,6 +17,9 @@ library(hash)
 library(devtools)
 library(knitr)
 library(glmnet)
+library(RMySQL)
+library(DBI)
+
 load_all("~/work/code/Rpackages/cytominr")
 
 registerDoMC()
@@ -25,9 +28,21 @@ registerDoMC()
 
 ```{r, eval=TRUE}
 rm(list=ls())
-cf = '../input/TIALP-B1/summary_alp.yml'
-B <- profile.data(cf)
-print(xtable(B$data), file="summary_alp_per_cell.tex", size="tiny")
+
+con <- dbConnect(MySQL(),user="cpuser", password="cPus3r",
+                 dbname="2012_08_20_TopoChipScreening_deBoerLab", host="imgdb02")
+
+rs <- dbSendQuery(con, 'select I.Image_Metadata_ArrayNumber as Array, avg(ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr) as meanALP, median(ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr) as medALP, stddev(ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr) as stdALP, count(*) as ncells from TiALP_Per_Image as I, TiALP_Per_Object as O where I.ImageNumber = O.ImageNumber group by I.Image_Metadata_ArrayNumber')
+tbl <- fetch(rs)
+print(xtable(tbl), file="summary_alp_per_cell.tex", size="tiny")
+
+rs <- dbSendQuery(con, 'select Image_Metadata_ArrayNumber as Array, count(*) as nimages, sum(Image_Count_Cells) as ncells, sum(Image_Count_Cells) /count(*) as ncells_per_image from TiALP_Per_Image group by Image_Metadata_ArrayNumber')
+tbl <- fetch(rs)
+print(xtable(tbl), file="summary_alp_per_image.tex", size="tiny")
+
+dbDisconnect(con)
+
+
 ```
 
 ```{r, eval=FALSE}
