@@ -26,7 +26,7 @@ registerDoMC()
 #registerDoSEQ()
 ```
 
-```{r, eval=TRUE}
+```{r, eval=FALSE}
 rm(list=ls())
 
 con <- dbConnect(MySQL(),user="cpuser", password="cPus3r",
@@ -77,6 +77,51 @@ Xmorp0 <- readRDS('../results/alp_prediction/018ce9ee/Xmorp0.rda')
 
 Xmorp0 <- Xmorp0[,-nearZeroVar(Xmorp0)]
 Xmorp0 <- Xmorp0[,-findCorrelation(cor(Xmorp0))]
+
+```
+
+```{r test_correlations, eval=TRUE}
+rm(list=ls())
+Xmorp0 <- readRDS('../results/alp_prediction/018ce9ee/Xmorp0.rda')
+
+categ <- function(v) {
+  v <- as.character(v)
+  comp <- simplify2array(strsplit(v,"_")[[1]][1])
+  type <- simplify2array(strsplit(v,"_")[[1]][2])
+  if (type=='RadialDistribution') type <- 'RadDir'
+  if (type=='Correlation') type <- 'Corr'
+  if (type=='Granularity') type <- 'Gran'
+  clist <- c('ALP4Corr', 'Actin4Corr', 'DNA4Corr')
+  channel <- clist[unlist(lapply(clist, function(t) length(grep(t, v)) != 0))]
+  if (length(channel)!=1) channel <- "None"
+  data.frame(feature=v,comp,type,channel)
+}
+
+x <- Xmorp0
+x <- x[,-nearZeroVar(x)]
+x <- as.matrix(x)
+x <- cor(x)
+x <- as.array(x)
+x[upper.tri(x,diag=T)] <- 0
+x <- melt(x)
+x <- x[abs(x$value) > 0.9,]
+x <- x[x$value != 1,]
+
+
+
+categs <- ldply(names(Xmorp0), categ)
+c1 <- c2<- categs
+names(c1) <- paste("f1", names(c1), sep="_")
+names(c2) <- paste("f2", names(c2), sep="_")
+xm <- x
+xm <-  merge(c1, xm, by.x="f1_feature", by.y="X1")
+xm <-  merge(c2, xm, by.x="f2_feature", by.y="X2")
+xm0 <- merge(c1,c2, all=T)
+
+table(xm$f1_comp,xm$f2_comp)/table(xm0$f1_comp,xm0$f2_comp)
+t <- table(xm$f1_channel,xm$f2_channel)/table(xm0$f1_channel,xm0$f2_channel)
+
+
 
 ```
 
@@ -149,5 +194,3 @@ coefs_lab <- factor(1:length(coefs), labels=names(coefs))
 qplot(coefs_lab,coefs, geom='bar', stat='identity') + coord_flip() + xlab('Features') + ylab('Regression Coef')
 
 ```
-
-
