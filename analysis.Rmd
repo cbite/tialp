@@ -60,7 +60,8 @@ fname_f <- data.frame(FileName_Actin_w_array_name = Xtopo$FileName_Actin_w_array
 meta_csv_joined <- join(fname_f, meta_csv, type="left")
 names(meta_csv_joined) <- sub('Metadata_', '', names(meta_csv_joined))
 Xtopo <- meta_csv_joined
-
+saveRDS(Xtopo, file='Xtopo.rda')
+saveRDS(Xmorp, file='Xmorp.rda')
 rm(list=c("meta_csv_joined", "meta_csv"))
 ```
 
@@ -68,16 +69,72 @@ rm(list=c("meta_csv_joined", "meta_csv"))
 Xmorp0 <- Xmorp
 Xmorp0$featureidx <- Xtopo$featureidx
 Xmorp0 <- ddply(Xmorp0, .(featureidx), numcolwise(median))
-featureIdx <- Xmorp0$featureidx
+featureidx <- Xmorp0$featureidx
 Xmorp0 <- Xmorp0[,!(names(Xmorp0) %in% c('featureidx'))]
 saveRDS(Xmorp0, file='Xmorp0.rda')
-saveRDS(featureIdx, file='featureIdx.rda')
+saveRDS(featureidx, file='featureIdx.rda')
 
 ```
 
-```{r cleanup_X, eval=TRUE}
-Xmorp0 <- readRDS('../results/alp_prediction/876c05c6/Xmorp0.rda')
-featureIdx <- readRDS('../results/alp_prediction/876c05c6/featureIdx.rda')
+
+```{r pick_featureidxs_for_classification, eval=FALSE}
+pred_var <- "ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr"
+
+Xalp0 <- data.frame(featureidx=Xtopo$featureidx, 
+                    alp = Xmorp[,pred_var], 
+                    fname=Xtopo$FileName_Actin_w_array_name)
+Xalp1 <- ddply(Xalp0, .(featureidx), summarize, mean = mean(alp), sd = sd(alp), n = length(alp), snr = mean(alp)/sd(alp), 
+              featureidx=featureidx[1])
+
+g1_low  <- Xalp1$featureidx[((Xalp1$sd*2)<Xalp1$mean) & (Xalp1$mean < 250)]
+g1_high <- Xalp1$featureidx[((Xalp1$sd*2)<Xalp1$mean) & (Xalp1$mean > 450)]
+
+u_low  <- (Xalp0$featureidx %in% g1_low)  & (Xalp0$alp < 200)
+u_high <- (Xalp0$featureidx %in% g1_high) & (Xalp0$alp > 530)
+
+d_low  <- Xmorp[u_low,]
+d_high <- Xmorp[u_high,]
+
+y_low  <- rep('l', sum(u_low))
+y_high <- rep('h', sum(u_high))
+
+D <- rbind(d_low, d_high)
+y <- factor(c(y_low, y_high))
+D <- D[,-nearZeroVar(D)]
+exclude_cols <- unique(c(names(D)[grep('ALP', names(D))], pred_var))
+D <- as.matrix(D[, !(names(D) %in% exclude_cols)])
+
+n <- length(y)
+v <- sample(n)
+pctr <- 0.5
+ntr <- ceiling(pctr * n)
+tr_vec <- v[1:ntr]
+te_vec <- v[(1 + ntr):n]
+
+Dtr <- D[tr_vec, ]
+ytr <- y[tr_vec]
+Dte <- D[te_vec, ]
+yte <- y[te_vec]
+
+
+registerDoMC() 
+#registerDoSEQ() 
+#fit_ <- train(matrix(rnorm(1000), nrow=100, ncol=10), rnorm(100), method=method)
+fit <- train(Dtr, ytr, method = 'rf', tuneLength = 5, 
+             preProc = c("center", "scale"), 
+             trControl = trainControl(method = "repeatedcv", number = 5, repeats = 1))
+
+
+y_out <- predict(fit, Dte)
+
+
+
+
+```
+
+```{r cleanup_X, eval=FALSE}
+Xmorp0 <- readRDS('../results/alp_prediction/e052f898/Xmorp0.rda')
+featureIdx <- readRDS('../results/alp_prediction/e052f898/featureIdx.rda')
 Xmorp0 <- Xmorp0[,-nearZeroVar(Xmorp0)]
 Xmorp0 <- Xmorp0[,-findCorrelation(cor(Xmorp0))]
 
