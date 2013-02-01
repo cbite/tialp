@@ -45,7 +45,7 @@ dbDisconnect(con)
 
 ```
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 rm(list=ls())
 cf = '../input/TIALP-B1/well-summary-profile_mean-median-none-none.yml'
 B <- profile.data(cf)
@@ -68,19 +68,22 @@ rm(list=c("meta_csv_joined", "meta_csv"))
 Xmorp0 <- Xmorp
 Xmorp0$featureidx <- Xtopo$featureidx
 Xmorp0 <- ddply(Xmorp0, .(featureidx), numcolwise(median))
+featureIdx <- Xmorp0$featureidx
 Xmorp0 <- Xmorp0[,!(names(Xmorp0) %in% c('featureidx'))]
-saveRDS(Xmorp0, file='../input/Xmorp0.rda')
+saveRDS(Xmorp0, file='Xmorp0.rda')
+saveRDS(featureIdx, file='featureIdx.rda')
+
 ```
 
-```{r cleanup_X, eval=FALSE}
-Xmorp0 <- readRDS('../results/alp_prediction/018ce9ee/Xmorp0.rda')
-
+```{r cleanup_X, eval=TRUE}
+Xmorp0 <- readRDS('../results/alp_prediction/876c05c6/Xmorp0.rda')
+featureIdx <- readRDS('../results/alp_prediction/876c05c6/featureIdx.rda')
 Xmorp0 <- Xmorp0[,-nearZeroVar(Xmorp0)]
 Xmorp0 <- Xmorp0[,-findCorrelation(cor(Xmorp0))]
 
 ```
 
-```{r test_correlations, eval=TRUE}
+```{r test_correlations, eval=FALSE}
 rm(list=ls())
 Xmorp0 <- readRDS('../results/alp_prediction/018ce9ee/Xmorp0.rda')
 
@@ -106,9 +109,6 @@ x[upper.tri(x,diag=T)] <- 0
 x <- melt(x)
 x <- x[abs(x$value) > 0.9,]
 x <- x[x$value != 1,]
-
-
-
 categs <- ldply(names(Xmorp0), categ)
 c1 <- c2<- categs
 names(c1) <- paste("f1", names(c1), sep="_")
@@ -118,10 +118,7 @@ xm <-  merge(c1, xm, by.x="f1_feature", by.y="X1")
 xm <-  merge(c2, xm, by.x="f2_feature", by.y="X2")
 xm0 <- merge(c1,c2, all=T)
 
-table(xm$f1_comp,xm$f2_comp)/table(xm0$f1_comp,xm0$f2_comp)
-t <- table(xm$f1_channel,xm$f2_channel)/table(xm0$f1_channel,xm0$f2_channel)
-
-
+table(xm$f1_comp,xm$f2_comp)
 
 ```
 
