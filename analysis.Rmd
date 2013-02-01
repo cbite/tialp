@@ -45,7 +45,7 @@ dbDisconnect(con)
 
 ```
 
-```{r, eval=TRUE}
+```{r, eval=FALSE}
 rm(list=ls())
 cf = '../input/TIALP-B1/well-summary-profile_mean-median-none-none.yml'
 B <- profile.data(cf)
@@ -76,8 +76,11 @@ saveRDS(featureidx, file='featureIdx.rda')
 
 ```
 
+```{r pick_featureidxs_for_classification, eval=TRUE}
 
-```{r pick_featureidxs_for_classification, eval=FALSE}
+Xmorp <- readRDS('../results/alp_prediction/19e48bfd/Xmorp.rda')
+Xtopo <- readRDS('../results/alp_prediction/19e48bfd/Xtopo.rda')
+
 pred_var <- "ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr"
 
 Xalp0 <- data.frame(featureidx=Xtopo$featureidx, 
@@ -92,6 +95,9 @@ g1_high <- Xalp1$featureidx[((Xalp1$sd*2)<Xalp1$mean) & (Xalp1$mean > 450)]
 u_low  <- (Xalp0$featureidx %in% g1_low)  & (Xalp0$alp < 200)
 u_high <- (Xalp0$featureidx %in% g1_high) & (Xalp0$alp > 530)
 
+fn_low  <- as.character(Xtopo$FileName_Actin_w_array_name[u_low])
+fn_high <- as.character(Xtopo$FileName_Actin_w_array_name[u_high])
+
 d_low  <- Xmorp[u_low,]
 d_high <- Xmorp[u_high,]
 
@@ -100,10 +106,13 @@ y_high <- rep('h', sum(u_high))
 
 D <- rbind(d_low, d_high)
 y <- factor(c(y_low, y_high))
+fn <- c(fn_low, fn_high)
+
 D <- D[,-nearZeroVar(D)]
 exclude_cols <- unique(c(names(D)[grep('ALP', names(D))], pred_var))
 D <- as.matrix(D[, !(names(D) %in% exclude_cols)])
 
+set.seed(1)
 n <- length(y)
 v <- sample(n)
 pctr <- 0.5
@@ -111,24 +120,28 @@ ntr <- ceiling(pctr * n)
 tr_vec <- v[1:ntr]
 te_vec <- v[(1 + ntr):n]
 
-Dtr <- D[tr_vec, ]
-ytr <- y[tr_vec]
-Dte <- D[te_vec, ]
-yte <- y[te_vec]
+Dtr  <- D[tr_vec, ]
+ytr  <- y[tr_vec]
+fntr <- fn[tr_vec]
 
+Dte  <- D[te_vec, ]
+yte  <- y[te_vec]
+fnte <- fn[te_vec]
 
+method = 'rf'
 registerDoMC() 
 #registerDoSEQ() 
 #fit_ <- train(matrix(rnorm(1000), nrow=100, ncol=10), rnorm(100), method=method)
-fit <- train(Dtr, ytr, method = 'rf', tuneLength = 5, 
+fit <- train(Dtr, ytr, method = method, tuneLength = 5, 
              preProc = c("center", "scale"), 
              trControl = trainControl(method = "repeatedcv", number = 5, repeats = 1))
 
-
+print(fit)
 y_out <- predict(fit, Dte)
+table(y_out, yte)
 
-
-
+write.csv(cbind(fnte, as.character(yte), as.character(y_out)), 'labels.csv')
+varImpPlot(randomForest(D, y), n.var=10)
 
 ```
 
