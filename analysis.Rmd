@@ -145,6 +145,24 @@ varImpPlot(randomForest(D, y), n.var=10)
 
 ```
 
+```{r univariate}
+df <- data.frame()
+D <- as.data.frame(D)
+for (feat in names(D)) {
+  x <- D[,feat]
+  xl <- x[y=="l"]
+  xh <- x[y=="h"]
+  df0 <- data.frame(name=feat, 
+                    lowAlP_mean=mean(xl), highALP_mean=mean(xh), 
+                    lowAlP_sd=sd(xl), highALP_sd=sd(xh), 
+                    pval=t.test(xl,xh)$p.value)
+  if (NROW(df) == 0) df <- df0 else df <- rbind(df, df0)  
+}
+write.csv(df[with(df, order(pval)),], 'ttest.csv', row.names = F)
+
+
+
+```
 ```{r cleanup_X, eval=FALSE}
 Xmorp0 <- readRDS('../results/alp_prediction/e052f898/Xmorp0.rda')
 featureIdx <- readRDS('../results/alp_prediction/e052f898/featureIdx.rda')
