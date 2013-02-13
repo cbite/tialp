@@ -76,7 +76,7 @@ saveRDS(featureidx, file='featureIdx.rda')
 
 ```
 
-```{r pick_featureidxs_for_classification, eval=TRUE}
+```{r pick_featureidxs_for_classification, eval=FALSE}
 
 Xmorp <- readRDS('../results/alp_prediction/19e48bfd/Xmorp.rda')
 Xtopo <- readRDS('../results/alp_prediction/19e48bfd/Xtopo.rda')
@@ -141,11 +141,51 @@ y_out <- predict(fit, Dte)
 table(y_out, yte)
 
 write.csv(cbind(fnte, as.character(yte), as.character(y_out)), 'labels.csv')
+library(randomForest)
 varImpPlot(randomForest(D, y), n.var=10)
 
 ```
 
-```{r univariate}
+```{r dendrogram}
+pred_var <- "ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr"
+D <- readRDS('../results/alp_prediction/19e48bfd/Xmorp.rda')
+D <- D[,-nearZeroVar(D)]
+corD <- abs(cor(D))
+vmean <- corD[,pred_var]
+cor_thresh <- 0.3
+feat_flag <- vmean > cor_thresh
+corD <- corD[feat_flag,feat_flag]
+vmean <- vmean[feat_flag] 
+tree <- hclust(as.dist(1 - abs(corD)))
+tree.labels <- tree$labels
+tree$labels <- unlist(lapply(tree$labels, function(x) sprintf("%0.2f:%s", vmean[[as.character(x)]], 
+    as.character(x))))
+library(colorRamps)
+library(RColorBrewer)
+NCOLORS <- 10
+leafcols <- colorRampPalette(brewer.pal(9, "Blues"))(NCOLORS)
+#lab.col <- lapply(tree.labels, function(x) leafcols[[ceiling(NCOLORS * (0.3+0.7*(vmean[[as.character(x)]])))]])
+lab.col <- lapply(tree.labels, function(x) leafcols[[ceiling(NCOLORS * ((vmean[[as.character(x)]])))]])
+names(lab.col) <- tree$labels
+dendro <- as.dendrogram(tree)
+
+colLab <- function(n) {
+    if (is.leaf(n)) {
+        a <- attributes(n)
+        attr(n, "nodePar") <- c(a$nodePar, list(lab.col = lab.col[[attr(n, "label")]]))
+    }
+    n
+}
+
+dendroC <- dendrapply(dendro, colLab)
+
+pdf(width = 10, height = 10)
+par(mar = c(0, 0, 0, 30))
+plot(dendroC, horiz = TRUE, type = "triangle", center = T)
+dev.off()
+```
+
+```{r univariate, eval=FALSE}
 df <- data.frame()
 D <- as.data.frame(D)
 for (feat in names(D)) {
@@ -163,6 +203,7 @@ write.csv(df[with(df, order(pval)),], 'ttest.csv', row.names = F)
 
 
 ```
+
 ```{r cleanup_X, eval=FALSE}
 Xmorp0 <- readRDS('../results/alp_prediction/e052f898/Xmorp0.rda')
 featureIdx <- readRDS('../results/alp_prediction/e052f898/featureIdx.rda')
