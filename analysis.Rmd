@@ -150,15 +150,17 @@ varImpPlot(randomForest(D, y), n.var=10)
 pred_var <- "ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr"
 D <- readRDS('../results/alp_prediction/19e48bfd/Xmorp.rda')
 D <- D[,-nearZeroVar(D)]
-corD <- abs(cor(D))
+corDs <- cor(D)
+corD <- abs(corDs)
 vmean <- corD[,pred_var]
+vmeans <- corDs[,pred_var]
 cor_thresh <- 0.3
 feat_flag <- vmean > cor_thresh
 corD <- corD[feat_flag,feat_flag]
 vmean <- vmean[feat_flag] 
 tree <- hclust(as.dist(1 - abs(corD)))
 tree.labels <- tree$labels
-tree$labels <- unlist(lapply(tree$labels, function(x) sprintf("%0.2f:%s", vmean[[as.character(x)]], 
+tree$labels <- unlist(lapply(tree$labels, function(x) sprintf("%0.2f:%s", vmeans[[as.character(x)]], 
     as.character(x))))
 library(colorRamps)
 library(RColorBrewer)
