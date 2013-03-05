@@ -286,9 +286,11 @@ qplot(coefs_lab,coefs, geom='bar', stat='identity') + coord_flip() + xlab('Featu
 ```
 
 ```{r boxcox}
+rm(list=ls())
 library(car)
-
 D <- readRDS('../results/alp_prediction/19e48bfd/Xmorp.rda')
+# HACK to remove some outliers. This should be visually verified!
+D <- D[D$Cells_AreaShape_Area < quantile(D$Cells_AreaShape_Area, 0.98)[[1]], ] 
 D <- D[,-nearZeroVar(D)]
 D <- D[,-grep("EulerNumber", names(D))] # HACK! Removed because bc doesn't work with it
 bcp <- function(v) {m = min(v)-1; bcPower(v-m, powerTransform(v-m)$lambda)}
@@ -304,8 +306,7 @@ library(RColorBrewer)
 Xtopo <- readRDS('../results/alp_prediction/19e48bfd/Xtopo.rda')
 pred_var <- "ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr"
 
-D <- readRDS('Dbx.rda')
-D <- D[,-findCorrelation(cor(D), cutoff=0.90)]
+D <- readRDS('../results/HEAD/2558a576/Dbx.rda')
 
 # compute correlation
 corD <- cor(D)
@@ -333,6 +334,14 @@ cor_thresh <- 0.3
 flag <- abs(vmean) > cor_thresh
 corD <- corD[flag,flag]
 vmean <- vmean[flag] 
+
+# Threshold based on correlation wrt the pred_var
+flag <- !(seq(length(vmean)) %in% findCorrelation(corD, cutoff=0.90))
+corD <- corD[flag,flag]
+vmean <- vmean[flag] 
+
+
+
 
 # Build dendrogram based on correlation between features
 tree <- hclust(as.dist(1 - abs(corD)))
