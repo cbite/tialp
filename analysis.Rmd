@@ -45,7 +45,7 @@ dbDisconnect(con)
 
 ```
 
-```{r, eval=FALSE}
+```{r, Load_and_fix_data, eval=FALSE}
 rm(list=ls())
 cf = '../input/TIALP-B1/well-summary-profile_mean-median-none-none.yml'
 B <- profile.data(cf)
@@ -146,48 +146,8 @@ varImpPlot(randomForest(D, y), n.var=10)
 
 ```
 
-```{r dendrogram}
-pred_var <- "ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr"
-D <- readRDS('../results/alp_prediction/19e48bfd/Xmorp.rda')
-D <- D[,-nearZeroVar(D)]
-corDs <- cor(D)
-corD <- abs(corDs)
-vmean <- corD[,pred_var]
-vmeans <- corDs[,pred_var]
-cor_thresh <- 0.3
-feat_flag <- vmean > cor_thresh
-corD <- corD[feat_flag,feat_flag]
-vmean <- vmean[feat_flag] 
-tree <- hclust(as.dist(1 - abs(corD)))
-tree.labels <- tree$labels
-tree$labels <- unlist(lapply(tree$labels, function(x) sprintf("%0.2f:%s", vmeans[[as.character(x)]], 
-    as.character(x))))
-library(colorRamps)
-library(RColorBrewer)
-NCOLORS <- 10
-leafcols <- colorRampPalette(brewer.pal(9, "Blues"))(NCOLORS)
-#lab.col <- lapply(tree.labels, function(x) leafcols[[ceiling(NCOLORS * (0.3+0.7*(vmean[[as.character(x)]])))]])
-lab.col <- lapply(tree.labels, function(x) leafcols[[ceiling(NCOLORS * ((vmean[[as.character(x)]])))]])
-names(lab.col) <- tree$labels
-dendro <- as.dendrogram(tree)
-
-colLab <- function(n) {
-    if (is.leaf(n)) {
-        a <- attributes(n)
-        attr(n, "nodePar") <- c(a$nodePar, list(lab.col = lab.col[[attr(n, "label")]]))
-    }
-    n
-}
-
-dendroC <- dendrapply(dendro, colLab)
-
-pdf(width = 10, height = 10)
-par(mar = c(0, 0, 0, 30))
-plot(dendroC, horiz = TRUE, type = "triangle", center = T)
-dev.off()
-```
-
 ```{r univariate, eval=FALSE}
+# Perform t-test to identify variables in which differences are the most 
 df <- data.frame()
 D <- as.data.frame(D)
 for (feat in names(D)) {
@@ -215,6 +175,8 @@ Xmorp0 <- Xmorp0[,-findCorrelation(cor(Xmorp0))]
 ```
 
 ```{r test_correlations, eval=FALSE}
+
+# Inspect correlations between groups of variables 
 rm(list=ls())
 Xmorp0 <- readRDS('../results/alp_prediction/018ce9ee/Xmorp0.rda')
 
@@ -320,5 +282,161 @@ coefs <- sort(coefs[!(names(coefs) %in% c("(Intercept)"))], decreasing=T)
 coefs <- coefs[1:21]
 coefs_lab <- factor(1:length(coefs), labels=names(coefs))
 qplot(coefs_lab,coefs, geom='bar', stat='identity') + coord_flip() + xlab('Features') + ylab('Regression Coef')
+
+```
+
+```{r boxcox}
+library(car)
+
+D <- readRDS('../results/alp_prediction/19e48bfd/Xmorp.rda')
+D <- D[,-nearZeroVar(D)]
+D <- D[,-grep("EulerNumber", names(D))] # HACK! Removed because bc doesn't work with it
+bcp <- function(v) {m = min(v)-1; bcPower(v-m, powerTransform(v-m)$lambda)}
+Dbx <- colwise(bcp)(D)
+saveRDS(Dbx, file='Dbx.rda')
+```
+
+```{r, eval=FALSE}
+
+library(colorRamps)
+library(RColorBrewer)
+
+Xtopo <- readRDS('../results/alp_prediction/19e48bfd/Xtopo.rda')
+pred_var <- "ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr"
+
+D <- readRDS('Dbx.rda')
+D <- D[,-findCorrelation(cor(D), cutoff=0.90)]
+
+# compute correlation
+corD <- cor(D)
+
+# get the correlation of features wrt the pred_var, and use it to rank features
+vmean <- corD[,pred_var]
+
+# Remove ALP features
+flag <- !(seq(length(vmean)) %in% grep("^ALPCytoplasm_", names(vmean)))
+corD <- corD[flag,flag]
+vmean <- vmean[flag] 
+
+# Remove features that are obviously correlation with Nuclei_Number_Object_Number
+# This is a bit of a hack because it was done after the analysis, but it 
+# doesn't affect the result in any way, only makes the viz cleaner
+flag <- !(names(vmean) %in% c('Cells_Number_Object_Number', 'Cells_Parent_Nuclei', 
+                              'Cells_Neighbors_FirstClosestObjectNumber_Expanded',
+                              'Cells_Neighbors_SecondClosestObjectNumber_Expanded',
+                              'Cells_Neighbors_FirstClosestDistance_Expanded'))
+corD <- corD[flag,flag]
+vmean <- vmean[flag] 
+
+# Threshold based on correlation wrt the pred_var
+cor_thresh <- 0.3
+flag <- abs(vmean) > cor_thresh
+corD <- corD[flag,flag]
+vmean <- vmean[flag] 
+
+# Build dendrogram based on correlation between features
+tree <- hclust(as.dist(1 - abs(corD)))
+
+# Label the nodes
+tree.labels <- tree$labels
+tree$labels <- unlist(lapply(tree$labels, function(x) sprintf("%0.2f:%s", vmean[[as.character(x)]], as.character(x))))
+
+# color the nodes
+NCOLORS <- 10
+leafcols_pos <- colorRampPalette(brewer.pal(9, "Greens"))(NCOLORS)
+leafcols_neg <- colorRampPalette(brewer.pal(9, "Reds"))(NCOLORS)
+
+get_leafcol <- function(x, s) if (s < 0) leafcols_neg[[x]] else leafcols_pos[[x]]
+
+rescale_col <- function(x) 4 + ceiling((NCOLORS-4) * (abs(x)-min(abs(vmean))) / (max(abs(vmean)-min(abs(vmean)))))
+
+lab.col <- lapply(tree.labels, function(x) get_leafcol(rescale_col(vmean[[as.character(x)]]), sign(vmean[[as.character(x)]])))
+names(lab.col) <- tree$labels
+dendro <- as.dendrogram(tree)
+
+colLab <- function(n) {
+    if (is.leaf(n))
+        attr(n, "nodePar") <- c(attr(n, "nodePar"), list(lab.col = lab.col[[attr(n, "label")]]))
+    n
+}
+
+dendroC <- dendrapply(dendro, colLab)
+
+# plot dendrogram
+pdf(width = 8, height = 5)
+par(mar = c(0, 0, 0, 25))
+plot(dendroC, horiz = TRUE, type = "triangle", center = T)
+dev.off()
+```
+
+```{r, eval=FALSE}
+
+library(sem)
+library(corrgram)
+
+shorten_names <- function(df) { 
+names(df)[names(df)=="Cells_AreaShape_Area"] <- "lArea"
+names(df)[names(df)=="Cells_AreaShape_MajorAxisLength"] <- "MajorAx"                
+names(df)[names(df)=="Cells_AreaShape_MinorAxisLength"] <- "MinorAx"               
+names(df)[names(df)=="Cells_AreaShape_Solidity"] <- "Solidity"    
+names(df)[names(df)=="Cells_Intensity_IntegratedIntensity_Actin4Corr"] <- "IntegIntActin"
+names(df)[names(df)=="Cells_Intensity_MaxIntensity_Actin4Corr"] <-  "MaxIntActin"  
+names(df)[names(df)=="Cells_Intensity_StdIntensity_Actin4Corr"] <-  "StdIntActin"        
+names(df)[names(df)=="Cells_Neighbors_PercentTouching_Expanded"] <- "PCtouch"
+names(df)[names(df)=="Nuclei_Number_Object_Number"] <- "Count" # Not exactly cell count
+names(df)[names(df)=="Cells_AreaShape_Zernike_2_0"] <- "Zer2_0"
+names(df)[names(df)=="Cells_AreaShape_Extent"] <- "Extent"
+names(df)[names(df)=="Cells_AreaShape_Perimeter"] <- "Peri"
+names(df)[names(df)=="Cells_Intensity_MassDisplacement_Actin4Corr"] <- "MassDispActin"
+names(df)[names(df)=="Cells_Neighbors_SecondClosestDistance_Expanded"] <- "Neigbor2ndDist"
+names(df)[names(df)=="Cells_RadialDistribution_FracAtD_Actin4Corr_1of4"] <- "RadDirActin"
+df
+}
+
+
+map_to_log <- function(df) { 
+df[,"Cells_AreaShape_Area"] <- log(df[,"Cells_AreaShape_Area"])
+df[,"Cells_AreaShape_MajorAxisLength"] <- log(df[,"Cells_AreaShape_MajorAxisLength"])               
+df[,"Cells_AreaShape_MinorAxisLength"] <- log(df[,"Cells_AreaShape_MinorAxisLength"])      
+df[,"Cells_AreaShape_Solidity"] <- log(df[,"Cells_AreaShape_Solidity"]) 
+df[,"Cells_Intensity_IntegratedIntensity_Actin4Corr"] <- log(df[,"Cells_Intensity_IntegratedIntensity_Actin4Corr"]) 
+df[,"Cells_Intensity_MaxIntensity_Actin4Corr"] <- log(df[,"Cells_Intensity_MaxIntensity_Actin4Corr"]) 
+df[,"Cells_Intensity_StdIntensity_Actin4Corr"] <- log(df[,"Cells_Intensity_StdIntensity_Actin4Corr"])      
+df[,"Cells_Neighbors_PercentTouching_Expanded"] 
+df[,"Nuclei_Number_Object_Number"] 
+df
+}
+
+
+Dsub <- subset(D[,names(vmean)], Cells_AreaShape_Area < 150000 )
+#Dsub_log <- map_to_log(as.data.frame(Dsub))
+Dsub_r <- shorten_names(as.data.frame(Dsub))
+Dsub_m <- as.matrix(Dsub)
+Dsub_mr <- as.data.frame(Dsub_m)
+names(Dsub_mr) <- names(Dsub_r)
+hexplom(Dsub_mr, xbins=80)
+
+
+
+Dsub.cov <- cov(Dsub)
+model.Dsub <- specifyModel('model1.txt') 
+Dsub.sem <- sem(model.Dsub, Dsub.cov, nrow(Dsub))
+summary(Dsub.sem)
+fs <- fscores(Dsub.sem)
+Dsub_f <- Dsub_m %*% fs
+
+hexplom(Dsub_f, xbins=80)
+
+D3 <- subset(D, Nuclei_Number_Object_Number < 2)
+DD3 <- D3[,c("Nuclei_Number_Object_Number", "Cells_AreaShape_Area")]
+
+corrgram(DD3, order=TRUE, lower.panel=panel.ellipse,
+  upper.panel=panel.pts, text.panel=panel.txt,
+  diag.panel=panel.minmax)
+
+
+#pathDiagram(Dsub.sem, 'graph', min.rank=NULL, max.rank=NULL, same.rank=NULL, variables=Dsub.sem$var.names, ignore.double=TRUE, edge.labels=c("names", "values", "both"), size=c(8, 8),   rank.direction=c("LR", "TB"), digits=2, standardize=FALSE, output.type=c("graphics", "dot"), graphics.fmt="pdf", dot.options=NULL)
+
+
 
 ```
