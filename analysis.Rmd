@@ -45,7 +45,7 @@ dbDisconnect(con)
 
 ```
 
-```{r, Load_and_fix_data, eval=FALSE}
+```{r load_and_fix_data, eval=FALSE}
 rm(list=ls())
 cf = '../input/TIALP-B1/well-summary-profile_mean-median-none-none.yml'
 B <- profile.data(cf)
@@ -285,7 +285,7 @@ qplot(coefs_lab,coefs, geom='bar', stat='identity') + coord_flip() + xlab('Featu
 
 ```
 
-```{r boxcox}
+```{r boxcox, eval=FALSE}
 rm(list=ls())
 library(car)
 D <- readRDS('../results/alp_prediction/19e48bfd/Xmorp.rda')
@@ -298,15 +298,42 @@ Dbx <- colwise(bcp)(D)
 saveRDS(Dbx, file='Dbx.rda')
 ```
 
-```{r, eval=FALSE}
-
+```{r feat_dendrogram, eval=TRUE}
+rm(list=ls())
 library(colorRamps)
 library(RColorBrewer)
+library(hash)
 
 Xtopo <- readRDS('../results/alp_prediction/19e48bfd/Xtopo.rda')
 pred_var <- "ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr"
 
-D <- readRDS('../results/HEAD/2558a576/Dbx.rda')
+D <- readRDS('../results/HEAD/8658d87a/Dbx.rda')
+
+h <- hash()
+h["Cells_AreaShape_Area"] <- "Area"
+h["Cells_AreaShape_MajorAxisLength"] <- "MajorAx"                
+h["Cells_AreaShape_MinorAxisLength"] <- "MinorAx"               
+h["Cells_AreaShape_Solidity"] <- "Solidity"    
+h["Cells_Intensity_IntegratedIntensity_Actin4Corr"] <- "IntegIntActin"
+h["Cells_Intensity_MaxIntensity_Actin4Corr"] <-  "MaxIntActin"  
+h["Cells_Intensity_StdIntensity_Actin4Corr"] <-  "StdIntActin"        
+h["Cells_Neighbors_PercentTouching_Expanded"] <- "PCtouch"
+h["Nuclei_Number_Object_Number"] <- "Count" # Not exactly cell count
+h["Cells_AreaShape_Zernike_2_0"] <- "Zer2_0"
+h["Cells_AreaShape_Zernike_2_2"] <- "Zer2_2"
+h["Cells_AreaShape_Extent"] <- "Extent"
+h["Cells_AreaShape_Perimeter"] <- "Peri"
+h["Cells_Intensity_MassDisplacement_Actin4Corr"] <- "MassDispActin"
+h["Cells_Neighbors_SecondClosestDistance_Expanded"] <- "Neigbor2ndDist"
+h["Cells_RadialDistribution_FracAtD_Actin4Corr_1of4"] <- "RadDirActin14"
+h["Cells_RadialDistribution_FracAtD_Actin4Corr_4of4"] <- "RadDirActin44"
+
+shorten_names <- function(df, h){
+  for(k in names(as.list(h)))
+    names(df)[names(df)==k] <- h[[k]]
+  df
+}
+#D <- shorten_names(D,h)
 
 # compute correlation
 corD <- cor(D)
@@ -340,9 +367,6 @@ flag <- !(seq(length(vmean)) %in% findCorrelation(corD, cutoff=0.90))
 corD <- corD[flag,flag]
 vmean <- vmean[flag] 
 
-
-
-
 # Build dendrogram based on correlation between features
 tree <- hclust(as.dist(1 - abs(corD)))
 
@@ -369,83 +393,90 @@ colLab <- function(n) {
     n
 }
 
+remap_names <- function(n) {
+    if (is.leaf(n))      
+        attr(n, "label") <- paste(strsplit(attr(n, "label"), ':')[[1]][1], h[[strsplit(attr(n, "label"), ':')[[1]][2]]], sep=':')
+    n  
+}
+
 dendroC <- dendrapply(dendro, colLab)
+dendroR <- dendrapply(dendroC, remap_names)
 
 # plot dendrogram
-pdf(width = 8, height = 5)
+pdf('dendro.pdf', width = 8, height = 5)
 par(mar = c(0, 0, 0, 25))
 plot(dendroC, horiz = TRUE, type = "triangle", center = T)
 dev.off()
+
+pdf('dendro_abbrev.pdf', width = 6, height = 5)
+par(mar = c(0, 0, 0, 10))
+plot(dendroR, horiz = TRUE, type = "triangle", center = T)
+dev.off()
+
+
+
 ```
 
-```{r, eval=FALSE}
+```{r perform_sem, eval=TRUE}
 
 library(sem)
 library(corrgram)
+library(hexbin)
 
-shorten_names <- function(df) { 
-names(df)[names(df)=="Cells_AreaShape_Area"] <- "lArea"
-names(df)[names(df)=="Cells_AreaShape_MajorAxisLength"] <- "MajorAx"                
-names(df)[names(df)=="Cells_AreaShape_MinorAxisLength"] <- "MinorAx"               
-names(df)[names(df)=="Cells_AreaShape_Solidity"] <- "Solidity"    
-names(df)[names(df)=="Cells_Intensity_IntegratedIntensity_Actin4Corr"] <- "IntegIntActin"
-names(df)[names(df)=="Cells_Intensity_MaxIntensity_Actin4Corr"] <-  "MaxIntActin"  
-names(df)[names(df)=="Cells_Intensity_StdIntensity_Actin4Corr"] <-  "StdIntActin"        
-names(df)[names(df)=="Cells_Neighbors_PercentTouching_Expanded"] <- "PCtouch"
-names(df)[names(df)=="Nuclei_Number_Object_Number"] <- "Count" # Not exactly cell count
-names(df)[names(df)=="Cells_AreaShape_Zernike_2_0"] <- "Zer2_0"
-names(df)[names(df)=="Cells_AreaShape_Extent"] <- "Extent"
-names(df)[names(df)=="Cells_AreaShape_Perimeter"] <- "Peri"
-names(df)[names(df)=="Cells_Intensity_MassDisplacement_Actin4Corr"] <- "MassDispActin"
-names(df)[names(df)=="Cells_Neighbors_SecondClosestDistance_Expanded"] <- "Neigbor2ndDist"
-names(df)[names(df)=="Cells_RadialDistribution_FracAtD_Actin4Corr_1of4"] <- "RadDirActin"
-df
-}
-
-
-map_to_log <- function(df) { 
-df[,"Cells_AreaShape_Area"] <- log(df[,"Cells_AreaShape_Area"])
-df[,"Cells_AreaShape_MajorAxisLength"] <- log(df[,"Cells_AreaShape_MajorAxisLength"])               
-df[,"Cells_AreaShape_MinorAxisLength"] <- log(df[,"Cells_AreaShape_MinorAxisLength"])      
-df[,"Cells_AreaShape_Solidity"] <- log(df[,"Cells_AreaShape_Solidity"]) 
-df[,"Cells_Intensity_IntegratedIntensity_Actin4Corr"] <- log(df[,"Cells_Intensity_IntegratedIntensity_Actin4Corr"]) 
-df[,"Cells_Intensity_MaxIntensity_Actin4Corr"] <- log(df[,"Cells_Intensity_MaxIntensity_Actin4Corr"]) 
-df[,"Cells_Intensity_StdIntensity_Actin4Corr"] <- log(df[,"Cells_Intensity_StdIntensity_Actin4Corr"])      
-df[,"Cells_Neighbors_PercentTouching_Expanded"] 
-df[,"Nuclei_Number_Object_Number"] 
-df
-}
-
-
-Dsub <- subset(D[,names(vmean)], Cells_AreaShape_Area < 150000 )
-#Dsub_log <- map_to_log(as.data.frame(Dsub))
-Dsub_r <- shorten_names(as.data.frame(Dsub))
+Dsub <- D[,names(vmean)]
 Dsub_m <- as.matrix(Dsub)
+
+# Plot pairwise scatterplot of features
+Dsub_r <- shorten_names(as.data.frame(Dsub), h)
 Dsub_mr <- as.data.frame(Dsub_m)
 names(Dsub_mr) <- names(Dsub_r)
-hexplom(Dsub_mr, xbins=80)
+
+pdf('pairwise_hexplot_feats.pdf', width = 25, height = 25)
+hexplom(Dsub_mr, xbins=20, upper.panel = panel.hexboxplot)
+dev.off()
 
 
-
-Dsub.cov <- cov(Dsub)
+# Build SEM model
+feats <- setdiff(names(vmean) , c('Cells_RadialDistribution_FracAtD_Actin4Corr_4of4', 
+                                  'Cells_AreaShape_MinorAxisLength',
+                                  'Cells_AreaShape_Perimeter'))
+Dsub.cov <- cor(Dsub[,feats])
 model.Dsub <- specifyModel('model1.txt') 
 Dsub.sem <- sem(model.Dsub, Dsub.cov, nrow(Dsub))
-summary(Dsub.sem)
-fs <- fscores(Dsub.sem)
-Dsub_f <- Dsub_m %*% fs
 
-hexplom(Dsub_f, xbins=80)
-
-D3 <- subset(D, Nuclei_Number_Object_Number < 2)
-DD3 <- D3[,c("Nuclei_Number_Object_Number", "Cells_AreaShape_Area")]
-
-corrgram(DD3, order=TRUE, lower.panel=panel.ellipse,
-  upper.panel=panel.pts, text.panel=panel.txt,
-  diag.panel=panel.minmax)
-
-
+# Print model
 #pathDiagram(Dsub.sem, 'graph', min.rank=NULL, max.rank=NULL, same.rank=NULL, variables=Dsub.sem$var.names, ignore.double=TRUE, edge.labels=c("names", "values", "both"), size=c(8, 8),   rank.direction=c("LR", "TB"), digits=2, standardize=FALSE, output.type=c("graphics", "dot"), graphics.fmt="pdf", dot.options=NULL)
 
+# SEM model summary
+summary(Dsub.sem)
+
+# Check correlations between factors
+fs <- fscores(Dsub.sem)
+Dsub_f <- as.matrix(Dsub[,feats]) %*% fs
+pdf('pairwise_hexplot_factors.pdf', width = 8, height = 8)
+hexplom(Dsub_f, xbins=20, upper.panel = panel.hexboxplot)
+dev.off()
+cor(Dsub_f)
+
+```
+
+```{r Compare_var_groups_pred_ALP, eval=TRUE}
+# Compare variable groups for predicting ALP
+varsel = list()
+varsel$only_actin_vars <- c('Cells_Intensity_IntegratedIntensity_Actin4Corr',
+          'Cells_Intensity_StdIntensity_Actin4Corr',
+          'Cells_RadialDistribution_FracAtD_Actin4Corr_1of4',
+          'Cells_RadialDistribution_FracAtD_Actin4Corr_4of4')
+varsel$no_actin_vars <- setdiff(names(vmean), varsel$only_actin_vars)
+varsel$all_vars <- names(vmean)
+for (s in names(varsel)) {
+  X <- D[,varsel[[s]]]
+  y <- D[,pred_var]
+  yt <- predict(lm(y~as.matrix(X)))
+  plot(hexbin(y, yt), main=sprintf("%s: Cor=%0.2f", s, cor(yt, y)))
+}
 
 
 ```
+
+
