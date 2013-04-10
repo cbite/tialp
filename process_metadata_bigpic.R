@@ -33,8 +33,9 @@ for (exp in exp_l) {
   }
 }
 
-flist <- as.character(read.csv(flist_fname)[,1])
+flist <- as.character(read.table(flist_fname)[,1])
 flagv <- rep(TRUE, NROW(meta_full))
+
 for (chsp in paste('wp', chs_l, sep='_')){
   flagv <- flagv & (meta_full[,chsp] %in% flist)
 }
