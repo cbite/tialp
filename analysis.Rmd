@@ -304,8 +304,8 @@ library(colorRamps)
 library(RColorBrewer)
 library(hash)
 
-Xtopo <- readRDS('../results/alp_prediction/19e48bfd/Xtopo.rda')
 pred_var <- "ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr"
+#pred_var <- "ALPCytoplasm_Intensity_MeanIntensity_ALP4Corr"
 
 D <- readRDS('../results/HEAD/8658d87a/Dbx.rda')
 
@@ -357,7 +357,7 @@ corD <- corD[flag,flag]
 vmean <- vmean[flag] 
 
 # Threshold based on correlation wrt the pred_var
-cor_thresh <- 0.3
+cor_thresh <- 0.25
 flag <- abs(vmean) > cor_thresh
 corD <- corD[flag,flag]
 vmean <- vmean[flag] 
@@ -376,13 +376,13 @@ tree$labels <- unlist(lapply(tree$labels, function(x) sprintf("%0.2f:%s", vmean[
 
 # color the nodes
 NCOLORS <- 10
-leafcols_pos <- colorRampPalette(brewer.pal(9, "Greens"))(NCOLORS)
-leafcols_neg <- colorRampPalette(brewer.pal(9, "Reds"))(NCOLORS)
+#leafcols_pos <- colorRampPalette(brewer.pal(9, "Blues"))(NCOLORS)
+#leafcols_neg <- colorRampPalette(brewer.pal(9, "Oranges"))(NCOLORS)
+#get_leafcol <- function(x, s) if (s < 0) leafcols_neg[[x]] else leafcols_pos[[x]]
 
-get_leafcol <- function(x, s) if (s < 0) leafcols_neg[[x]] else leafcols_pos[[x]]
-
-rescale_col <- function(x) 4 + ceiling((NCOLORS-4) * (abs(x)-min(abs(vmean))) / (max(abs(vmean)-min(abs(vmean)))))
-
+leafcols <- colorRampPalette(brewer.pal(9, "PRGn"))(2*NCOLORS+1)
+get_leafcol <- function(x, s) leafcols[[1+NCOLORS+s*x]]
+rescale_col <- function(x, step=4) step + ceiling((NCOLORS-step) * (abs(x)-min(abs(vmean))) / (max(abs(vmean)-min(abs(vmean)))))
 lab.col <- lapply(tree.labels, function(x) get_leafcol(rescale_col(vmean[[as.character(x)]]), sign(vmean[[as.character(x)]])))
 names(lab.col) <- tree$labels
 dendro <- as.dendrogram(tree)
@@ -403,21 +403,22 @@ dendroC <- dendrapply(dendro, colLab)
 dendroR <- dendrapply(dendroC, remap_names)
 
 # plot dendrogram
-pdf('dendro.pdf', width = 8, height = 5)
-par(mar = c(0, 0, 0, 25))
-plot(dendroC, horiz = TRUE, type = "triangle", center = T)
+#pdf('dendro.pdf', width = 8, height = 5)
+pdf(sprintf('dendro_%s.pdf', pred_var), width = 12, height = 8)
+par(mar = c(5, 15, 5, 25))
+plot(dendroC, horiz = TRUE, type = "triangle", center = T, main=pred_var)
 dev.off()
 
-pdf('dendro_abbrev.pdf', width = 6, height = 5)
-par(mar = c(0, 0, 0, 10))
-plot(dendroR, horiz = TRUE, type = "triangle", center = T)
-dev.off()
-
+# #pdf('dendro_abbrev.pdf', width = 6, height = 5)
+# pdf(sprintf('dendro_abbrev_%s.pdf', pred_var), width = 6, height = 5)
+# par(mar = c(5, 15, 5, 25))
+# plot(dendroR, horiz = TRUE, type = "triangle", center = T, main=pred_var)
+# dev.off()
 
 
 ```
 
-```{r perform_sem, eval=TRUE}
+```{r perform_sem, eval=FALSE}
 
 library(sem)
 library(corrgram)
@@ -460,7 +461,7 @@ cor(Dsub_f)
 
 ```
 
-```{r Compare_var_groups_pred_ALP, eval=TRUE}
+```{r Compare_var_groups_pred_ALP, eval=FALSE}
 # Compare variable groups for predicting ALP
 varsel = list()
 varsel$only_actin_vars <- c('Cells_Intensity_IntegratedIntensity_Actin4Corr',
