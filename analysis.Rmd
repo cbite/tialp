@@ -304,8 +304,8 @@ library(colorRamps)
 library(RColorBrewer)
 library(hash)
 
-pred_var <- "ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr"
-#pred_var <- "ALPCytoplasm_Intensity_MeanIntensity_ALP4Corr"
+#pred_var <- "ALPCytoplasm_Intensity_IntegratedIntensity_ALP4Corr"
+pred_var <- "ALPCytoplasm_Intensity_MeanIntensity_ALP4Corr"
 
 D <- readRDS('../results/HEAD/8658d87a/Dbx.rda')
 
