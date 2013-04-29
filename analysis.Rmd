@@ -55,7 +55,7 @@ names(Xtopo) <- sub('TiALP_Per_Image.Image_Metadata_', '', names(Xtopo))
 names(Xtopo) <- sub('Image_Metadata_', '', names(Xtopo))
 
 # Fix meta data issue # HACK!!
-meta_csv <- read.csv('../input/Metadatafile TopoChip_TiALP_array1_allunits_pruned_fixedmetaproblem.csv')
+meta_csv <- read.csv('../input/TIALP-B1/Metadatafile TopoChip_TiALP_array1_allunits_pruned_fixedmetaproblem.csv')
 fname_f <- data.frame(FileName_Actin_w_array_name = Xtopo$FileName_Actin_w_array_name)
 meta_csv_joined <- join(fname_f, meta_csv, type="left")
 names(meta_csv_joined) <- sub('Metadata_', '', names(meta_csv_joined))

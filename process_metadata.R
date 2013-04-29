@@ -6,9 +6,9 @@
 
 rm(list=ls())
 library(foreach)
-meta_fname = '../input/Metadatafile TopoChip_TiALP_array1_allunits.csv'
-#meta_pruned_fname = '../input/Metadatafile TopoChip_TiALP_array1_allunits_pruned.csv'
-meta_pruned_fname = '../input/Metadatafile TopoChip_TiALP_array1_allunits_pruned_fixedmetaproblem.csv'
+meta_fname = '../input/TIALP-B1/Metadatafile TopoChip_TiALP_array1_allunits.csv'
+#meta_pruned_fname = '../input/TIALP-B1/Metadatafile TopoChip_TiALP_array1_allunits_pruned.csv'
+meta_pruned_fname = '../input/TIALP-B1/Metadatafile TopoChip_TiALP_array1_allunits_pruned_fixedmetaproblem.csv'
 flist_fname = '../input/flist.txt'
 pathname <- "\\\\iodine\\imaging_analysis\\2012_08_20_TopoChipScreening_deBoerLab\\rawdataTiALPscreen\\"
 fprefix <- list(FileName_Actin='alexa488', FileName_DNA='dapi', FileName_ALP='alexa594')
