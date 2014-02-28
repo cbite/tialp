@@ -1,0 +1,36 @@
+```{r}
+library(testthat)
+library(ggplot2)
+library(reshape2)
+library(plyr)
+
+load("../results/alex/20140228/summary_feature_enrichment_5_classes_from_cpa.rdata")
+
+freqm <- melt(freq, id=c("Feature"))
+freq1 <- droplevels(subset(freq, Feature %in% freq[
+  apply(freq, 1, function(x) sum(x[c(2,3,6)])) > 0.9, "Feature"]))
+freqm1 <- melt(freq1, id=c("Feature"))
+
+
+
+p <- ggplot(freqm, aes(variable, value)) + geom_dotplot(binaxis = "y", 
+                                                   stackdir = "center",
+                                                   binwidth = .001)
+p <- p + ylab("freq")
+p <- p + ggtitle("Distribution of positive freq across classes")
+p
+
+
+p <- ggplot(freqm1, aes(variable, value)) + geom_dotplot(binaxis = "y", 
+                                                   stackdir = "center",
+                                                   binwidth = .01)
+p <- p + ylab("freq")
+p <- p + ggtitle("Distribution of positive freq across classes, only those topofeatures with sum freq > 0.9")
+p
+
+p <- ggplot(freqm1, aes(as.character(Feature), value, fill=variable)) + geom_bar(stat="identity")
+p <- p + ggtitle("freq value across toppfeatures with sum freq > 0.9")
+p
+
+```
+
